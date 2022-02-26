@@ -1,27 +1,30 @@
-use std::{f32::consts::PI};
 
-use bevy::{prelude::*, math::Vec3Swizzles};
-use crate::gameplugingroup::gametypes::*;
+use bevy::{prelude::*, math::{Vec3Swizzles, Quat, Vec2}};
+use crate::gameplugingroup::gametypes::{characters::*, utilities::*, prefabs::*};
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin
 {
-    fn build(&self, mut app: &mut App)
+    fn build(&self, app: &mut App)
     {
         app
             .add_startup_system(player_setup)
-            .add_system(player_move);
+            .add_system(player_velocity)
+            .add_system(player_turn);
     }
 }
 
-fn player_setup(mut commands: Commands)
+fn player_setup(
+    mut commands: Commands, 
+    asset_server: Res<AssetServer>
+)
 {
-    commands.spawn_bundle(SpriteBundle 
+    let player_sprite_bundle = SpriteBundle 
     {
         sprite: Sprite
         {
-            color: Color::RED,
+            color: Color::GREEN,
             custom_size: Some(Vec2::new(100.0, 100.0)),
             ..Default::default()
         },
@@ -30,37 +33,75 @@ fn player_setup(mut commands: Commands)
             translation: Vec3::new(0.0, 0.0, 0.0),
             ..Default::default()
         },
+        texture: asset_server.load("sprites/ship_L.png"),
         ..Default::default()
-    })
-    .insert(Player)
-    .insert(Thrust(25.0))
-    .insert(TurnSpeed(250.0))
-    .insert(Velocity(0.0, 0.0));
+    };
+
+    let player_ship_prefab = ShipPrefab
+    {
+        sprite_bundle: player_sprite_bundle,
+        thrust: Thrust(45.0),
+        turnspeed: TurnSpeed(500.0),
+        motile: MotileType::Ship,
+        ..Default::default()
+    };
+
+    commands.spawn_bundle(player_ship_prefab)
+        .insert(Player);
 }
 
-fn player_move(time: Res<Time>, keys: Res<Input<KeyCode>>, mut player_q: Query<(&Thrust, &TurnSpeed, &mut Transform, &mut Velocity), With<Player>>)
+fn player_velocity(
+    keys: Res<Input<KeyCode>>, 
+    mut player_q: Query<(&Thrust, &Transform, &mut Velocity), With<Player>>
+)
 {
-    if let Ok((thrust, turn_speed, mut transform, mut velocity)) = player_q.get_single_mut()
-    {
-        let rotate_dir = -1.0 * ((keys.pressed(KeyCode::D) as i32) - (keys.pressed(KeyCode::A) as i32)) as f32;
-        transform.rotation *= Quat::from_rotation_z(turn_speed.0 * rotate_dir * time.delta_seconds() * PI / 180.0);
+    if let Ok((thrust, transform, mut velocity)) = player_q.get_single_mut()
+    { 
 
-        let impulse_strength = keys.pressed(KeyCode::Space) as i32 as f32;
-        let impulse_dir = transform.local_y().xy();
-        velocity.0 += impulse_dir.x * impulse_strength * thrust.0;
-        velocity.1 += impulse_dir.y * impulse_strength * thrust.0;
-
-        transform.translation += Vec3::new(velocity.0, velocity.1, 0.0) * time.delta_seconds();
-
-        if keys.just_pressed(KeyCode::Backslash)
+        let impulse_strength = (keys.pressed(KeyCode::W) as i32 * 3 - keys.pressed(KeyCode::S) as i32)as f32 / 3.0;
+        let strafe_strength = ((keys.pressed(KeyCode::A) as i32) - (keys.pressed(KeyCode::D) as i32)) as f32 * 0.5;
+        let impulse_dir = transform.up().xy();
+        let strafe_dir = transform.left().xy();
+        let mut thrust_direction = impulse_dir * impulse_strength + strafe_dir * strafe_strength;
+        if thrust_direction != Vec2::ZERO
         {
-            transform.translation = Vec3::ZERO;
-            (velocity.0, velocity.1) = (0.0, 0.0);
+            thrust_direction = thrust_direction.normalize();
         }
+
+        velocity.0 += thrust_direction * thrust.0;
+
+        
     }
 }
 
-fn player_fire()
+fn player_turn(
+    time: Res<Time>, 
+    windows: Res<Windows>, 
+    camera_q: Query<(&Camera, &GlobalTransform), With<PlayerCameraTag>>, 
+    mut player_q: Query<&mut Target, With<Player>>
+)
+{
+    
+        let (camera, camera_transform) = camera_q.single();
+        let mut target = player_q.single_mut();
+
+        let window = windows.get(camera.window).unwrap();
+
+        if let Some(mouse_screen_pos) = window.cursor_position()
+        {
+            let window_size = Vec2::new(window.width() as f32, window.height() as f32);
+            let ndc = (mouse_screen_pos / window_size) * 2.0 - Vec2::ONE;
+            let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix.inverse();
+            let mouse_world_position = ndc_to_world.project_point3(ndc.extend(-1.0));
+            let mouse_world_position: Vec2 = mouse_world_position.truncate();
+
+            *target = Target(Some(mouse_world_position));
+        }
+}
+
+#[allow(dead_code)]
+fn player_fire(
+)
 {
 
 }

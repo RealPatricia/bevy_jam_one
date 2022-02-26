@@ -1,11 +1,13 @@
+use std::f32::consts::PI;
+
 use bevy::prelude::*;
-use crate::gameplugingroup::gametypes::*;
+use crate::gameplugingroup::gametypes::{characters::*, prefabs::*};
 
 pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin
 {
-    fn build(&self, mut app: &mut App)
+    fn build(&self, app: &mut App)
     {
         app
             .add_startup_system(enemy_setup);
@@ -14,76 +16,50 @@ impl Plugin for EnemyPlugin
 
 fn enemy_setup(mut commands: Commands)
 {
-    commands.spawn_bundle(SpriteBundle 
+    let enemy_sprite_bundle = SpriteBundle 
+    {
+        sprite: Sprite
         {
-            sprite: Sprite
-            {
-                color: Color::GREEN,
-                custom_size: Some(Vec2::new(100.0, 100.0)),
-                ..Default::default()
-            },
-            transform: Transform
-            {
-                translation: Vec3::new(400.0, 0.0, 0.0),
-                ..Default::default()
-            },
+            color: Color::RED,
+            custom_size: Some(Vec2::new(100.0, 100.0)),
             ..Default::default()
-        });
-        
-        commands.spawn_bundle(SpriteBundle 
-        {
-            sprite: Sprite
-            {
-                color: Color::GREEN,
-                custom_size: Some(Vec2::new(100.0, 100.0)),
-                ..Default::default()
-            },
-            transform: Transform
-            {
-                translation: Vec3::new(0.0, 200.0, 0.0),
-                ..Default::default()
-            },
-            ..Default::default()
-        });
+        },
+        ..Default::default()
+    };
 
-        commands.spawn_bundle(SpriteBundle 
-        {
-            sprite: Sprite
-            {
-                color: Color::GREEN,
-                custom_size: Some(Vec2::new(100.0, 100.0)),
-                ..Default::default()
-            },
-            transform: Transform
-            {
-                translation: Vec3::new(0.0, -200.0, 0.0),
-                ..Default::default()
-            },
-            ..Default::default()
-        });
+    let enemy_ship_prefab = ShipPrefab
+    {
+        sprite_bundle: enemy_sprite_bundle,
+        thrust: Thrust(45.0),
+        turnspeed: TurnSpeed(500.0),
+        motile: MotileType::Ship,
+        ..Default::default()
+    };
 
-        commands.spawn_bundle(SpriteBundle 
+    for i in 0..4 
+    {
+        let enemy = commands.spawn_bundle(enemy_ship_prefab.clone()).insert(Enemy).id();
+        commands.entity(enemy).insert(Transform
         {
-            sprite: Sprite
-            {
-                color: Color::GREEN,
-                custom_size: Some(Vec2::new(100.0, 100.0)),
-                ..Default::default()
-            },
-            transform: Transform
-            {
-                translation: Vec3::new(-400.0, 0.0, 0.0),
-                ..Default::default()
-            },
+            translation: Vec3::new(400.0 * (PI * 0.5 * i as f32).sin(), 200.0 * (PI * 0.5 * i as f32).cos(), 0.0),
             ..Default::default()
         });
+    }
 }
 
-fn enemy_move()
+#[allow(dead_code)]
+fn enemy_velocity()
 {
 
 }
 
+#[allow(dead_code)]
+fn enemy_aim()
+{
+
+}
+
+#[allow(dead_code)]
 fn enemy_fire()
 {
 
