@@ -38,7 +38,6 @@ fn camera_follow_player(
     )
 {
     let mut player_pos: Vec2 = Vec2::ZERO;
-    let mut cam_pos: Vec2 = Vec2::ZERO;
 
     if let Ok(player_trans) = q_set.q1().get_single()
     {
@@ -47,7 +46,7 @@ fn camera_follow_player(
 
     if let Ok(mut cam_trans) = q_set.q0().get_single_mut()
     {
-        cam_pos = Vec2::new(cam_trans.translation.x, cam_trans.translation.y);
+        let cam_pos = Vec2::new(cam_trans.translation.x, cam_trans.translation.y);
         let diff = player_pos - cam_pos;
         let mag = (diff * 0.1).length_squared();
         let adjustment = Vec3::new(diff.x, diff.y, 0.0) * time.delta_seconds() * mag; 
