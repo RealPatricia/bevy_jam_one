@@ -1,5 +1,5 @@
 
-use bevy::{prelude::*, math::{Vec3Swizzles, Quat, Vec2}};
+use bevy::{prelude::*, math::{Vec3Swizzles, Vec2}};
 use crate::gameplugingroup::gametypes::{characters::*, utilities::*, prefabs::*};
 
 pub struct PlayerPlugin;
@@ -11,7 +11,7 @@ impl Plugin for PlayerPlugin
         app
             .add_startup_system(player_setup)
             .add_system(player_velocity)
-            .add_system(player_turn);
+            .add_system(player_target);
     }
 }
 
@@ -74,8 +74,7 @@ fn player_velocity(
     }
 }
 
-fn player_turn(
-    time: Res<Time>, 
+fn player_target(
     windows: Res<Windows>, 
     camera_q: Query<(&Camera, &GlobalTransform), With<PlayerCameraTag>>, 
     mut player_q: Query<&mut Target, With<Player>>
