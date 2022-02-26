@@ -1,8 +1,6 @@
 
 pub mod characters
 {
-    use std::default;
-
     use bevy::prelude::*;
 
     #[derive(Component, PartialEq, Eq, Default, Clone)]
@@ -34,6 +32,7 @@ pub mod characters
     #[derive(Component, Default, Clone)]
     pub struct Target(pub Option<Vec2>);
 
+    #[allow(dead_code)]
     #[derive(Component, Default, Clone)]
     pub enum Health
     {
