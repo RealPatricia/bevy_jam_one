@@ -98,7 +98,6 @@ fn player_target(
         }
 }
 
-#[allow(dead_code)]
 fn player_fire(
     time: Res<Time>,
     mut player_q: Query<(&Transform, &Velocity), With<Player>>,
