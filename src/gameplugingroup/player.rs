@@ -41,14 +41,16 @@ fn player_setup(
     let player_ship_prefab = ShipPrefab
     {
         sprite_bundle: player_sprite_bundle,
-        thrust: Thrust(45.0),
-        turnspeed: TurnSpeed(500.0),
+        thrust: Thrust(30.0),
+        turnspeed: TurnSpeed(600.0),
         motile: MotileType::Ship,
+        health: Health::Infinite,
         ..Default::default()
     };
 
     commands.spawn_bundle(player_ship_prefab)
-        .insert(Player);
+        .insert(Player)
+        .insert(FireTimer(Timer::from_seconds(0.1, true)));
 }
 
 fn player_velocity(
@@ -59,10 +61,10 @@ fn player_velocity(
     if let Ok((thrust, transform, mut velocity)) = player_q.get_single_mut()
     { 
 
-        let impulse_strength = (keys.pressed(KeyCode::W) as i32 * 3 - keys.pressed(KeyCode::S) as i32)as f32 / 3.0;
-        let strafe_strength = ((keys.pressed(KeyCode::A) as i32) - (keys.pressed(KeyCode::D) as i32)) as f32 * 0.5;
-        let impulse_dir = transform.up().xy();
-        let strafe_dir = transform.left().xy();
+        let impulse_strength = (keys.pressed(KeyCode::W) as i32 - keys.pressed(KeyCode::S) as i32)as f32;
+        let strafe_strength = ((keys.pressed(KeyCode::A) as i32) - (keys.pressed(KeyCode::D) as i32)) as f32;
+        let impulse_dir = transform.up().truncate();
+        let strafe_dir = transform.left().truncate();
         let mut thrust_direction = impulse_dir * impulse_strength + strafe_dir * strafe_strength;
         if thrust_direction != Vec2::ZERO
         {
@@ -100,19 +102,22 @@ fn player_target(
 
 fn player_fire(
     time: Res<Time>,
-    mut player_q: Query<(&Transform, &Velocity), With<Player>>,
+    mut player_q: Query<(&Transform, &Velocity, &mut FireTimer), With<Player>>,
     keys: Res<Input<MouseButton>>,
     mut ev_laser: EventWriter<LaserFireEvent>
 )
 {
-    if keys.just_pressed(MouseButton::Left)
+    if keys.pressed(MouseButton::Left)
     {
-        if let Ok((transform, velocity)) = player_q.get_single_mut()
+        if let Ok((transform, velocity, mut fire_timer)) = player_q.get_single_mut()
         {
-            let laser_velocity = Velocity(transform.local_y().truncate() * 2000.0 + velocity.0 * 2.0);
-            let mut laser_transform = (*transform).clone();
-            laser_transform.translation += laser_transform.local_y() * 20.0 + Vec3::new(velocity.0.x, velocity.0.y, 0.0) * time.delta_seconds();
-            ev_laser.send(LaserFireEvent(laser_transform, laser_velocity));
+            if fire_timer.0.tick(time.delta()).just_finished()
+            {
+                let laser_velocity = Velocity(transform.local_y().truncate() * 2000.0 + velocity.0);
+                let mut laser_transform = (*transform).clone();
+                laser_transform.translation += laser_transform.local_y() * 20.0 + Vec3::new(velocity.0.x, velocity.0.y, 0.0) * time.delta_seconds();
+                ev_laser.send(LaserFireEvent(laser_transform, laser_velocity, LaserType::PlayerLaser));
+            }
         }
     }
 } 

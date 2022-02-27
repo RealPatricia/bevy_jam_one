@@ -15,7 +15,8 @@ impl Plugin for EnemyPlugin
             .add_startup_system(enemy_setup)
             .add_system(enemy_target)
             .add_system(enemy_velocity)
-            .add_system(enemy_fire);
+            .add_system(enemy_fire)
+            .add_system(enemy_collision_avoidance);
     }
 }
 
@@ -24,6 +25,7 @@ fn enemy_setup(
     asset_server: Res<AssetServer>
 )
 {
+    let ship_num = 4;
     let enemy_sprite_bundle = SpriteBundle 
     {
         sprite: Sprite
@@ -39,50 +41,56 @@ fn enemy_setup(
     let enemy_ship_prefab = ShipPrefab
     {
         sprite_bundle: enemy_sprite_bundle,
-        thrust: Thrust(60.0),
-        turnspeed: TurnSpeed(400.0),
+        thrust: Thrust(50.0),
+        turnspeed: TurnSpeed(300.0),
         motile: MotileType::Ship,
+        health: Health::Finite(50),
         ..Default::default()
     };
 
-    for i in 0..4 
+    for i in 0..ship_num
     {
-        let enemy = commands.spawn_bundle(enemy_ship_prefab.clone()).insert(Enemy).id();
-        commands.entity(enemy).insert(Transform
-        {
-            translation: Vec3::new(400.0 * (PI * 0.5 * i as f32).sin(), 200.0 * (PI * 0.5 * i as f32).cos(), 0.0),
-            ..Default::default()
-        });
+        commands
+            .spawn_bundle(enemy_ship_prefab.clone())
+            .insert(Enemy)
+            .insert(FireTimer(Timer::from_seconds(0.25, true)))
+            .insert(Transform
+            {
+                translation: Vec3::new(200.0 * (PI * 0.2 * i as f32).sin(), 200.0 * (PI * 0.2 * i as f32).cos(), 0.0),
+                ..Default::default()
+            });
     }
 }
 
 #[allow(dead_code)]
 fn enemy_velocity(
-    mut enemy_q: Query<(&Target, &Transform, &Thrust, &mut Velocity), With<Enemy>>
+    mut enemy_q: Query<(&Target, &Transform, &Thrust, &mut Velocity), With<Enemy>>,
+    player_q: Query<&Transform, With<Player>>
 )
 {
-    for (target, transform, thrust, mut velocity) in enemy_q.iter_mut()
+    if let Ok(player_transform) = player_q.get_single()
     {
-        if let Some(has_target) = target.0
+        let player_location = player_transform.translation.truncate();
+        for (target, transform, thrust, mut velocity) in enemy_q.iter_mut()
         {
-            let pos = transform.translation.truncate();
-            let target_dir = (has_target - pos).normalize();
-            let target_dist = (has_target - pos).length();
-            let target_angle = (has_target - pos).angle_between(transform.local_y().truncate()).signum();
-            
-            let thrust_dir = target_dir * thrust.0;
+            if let Some(target_exists) = target.0
+            {
+                let my_location = transform.translation.truncate();
 
-            if target_dist > 500.0
-            {
-                velocity.0 += thrust_dir;
-            }
-            else if target_dist < 250.0
-            {
-                velocity.0 -= thrust_dir;
-            }
-            else
-            {
-                velocity.0 += transform.local_x().truncate() * target_angle * thrust.0 * -2.0;
+                let approach_dist = 400.0;
+                let retreat_dist = 200.0;
+                let center_dist = (approach_dist + retreat_dist) / 2.0;
+                let adjustment = (approach_dist - retreat_dist) / 2.0;
+
+                let dist_to_player = (player_location - my_location).length();
+                let player_dist_from_center = dist_to_player - center_dist;
+                let sign = player_dist_from_center.signum();
+                let behavior = (player_dist_from_center.abs() - adjustment).clamp(0.0, 1000.0)/1000.0;
+                let thrust_behavior = sign * behavior;
+
+                let angle = (target_exists - transform.translation.truncate()).angle_between(transform.local_y().truncate());
+                let thrust_normalize = (0.75 * PI - angle.abs()) / PI;
+                velocity.0 += transform.local_y().truncate() * thrust.0 * thrust_normalize * thrust_behavior * 1.5;
             }
         }
     }
@@ -90,34 +98,25 @@ fn enemy_velocity(
 
 #[allow(dead_code)]
 fn enemy_target(
+    time: Res<Time>,
     mut q_set: QuerySet<(
-        QueryState<&Transform, With<Player>>,
-        QueryState<(&Transform, &mut Target), With<Enemy>>
+        QueryState<(&Transform, &Velocity), With<Player>>,
+        QueryState<(&Transform, &Velocity, &mut Target), With<Enemy>>
     )>
 )
 {
     let mut my_target: Option<Vec2> = None;
 
-    if let Ok(player_trans) = q_set.q0().get_single()
+    if let Ok((player_trans, _)) = q_set.q0().get_single()
     {
         my_target = Some(player_trans.translation.truncate());
     }
 
-    for (transform, mut target) in q_set.q1().iter_mut()
+    for (_transform, enemy_velocity, mut target) in q_set.q1().iter_mut()
     {
         if let Some(player_location) = my_target
         {
-            let my_location = transform.translation.truncate();
-            let dist = (my_location - player_location).length();
-
-            if dist < 500.0
-            {
-               *target = Target(Some(player_location)); 
-            }
-            else if dist > 4000.0 
-            {
-                *target = Target(None);
-            }
+           *target = Target(Some(player_location - enemy_velocity.0 * time.delta_seconds())); 
         }
     }
 
@@ -125,27 +124,48 @@ fn enemy_target(
 
 #[allow(dead_code)]
 fn enemy_fire(
-    enemy_q: Query<(&Transform, &Velocity, &Target), With<Enemy>>,
+    mut enemy_q: Query<(&Transform, &Velocity, &Target, &mut FireTimer), With<Enemy>>,
     mut ev_laser: EventWriter<LaserFireEvent>,
     time: Res<Time>
 )
 {
-    for (transform, velocity, target) in enemy_q.iter()
+    for (transform, velocity, target, mut fire_timer) in enemy_q.iter_mut()
     {
-        if let Some(target_position) = (*target).0
+        if fire_timer.0.tick(time.delta()).just_finished()
         {
-            let pos = transform.translation.truncate();
-            let target_angle = (target_position - pos).angle_between(transform.local_y().truncate());
-
-
-            if target_angle < 0.1
+            if let Some(target_position) = (*target).0
             {
-                let laser_velocity = Velocity(transform.local_y().truncate() * 2000.0 + velocity.0 * 2.0);
-                let mut laser_transform = (*transform).clone();
-                laser_transform.translation += laser_transform.local_y() * 20.0 + Vec3::new(velocity.0.x, velocity.0.y, 0.0) * time.delta_seconds();
-                
-                ev_laser.send(LaserFireEvent(laser_transform, laser_velocity));
+                let pos = transform.translation.truncate();
+                let target_angle = (target_position - pos).angle_between(transform.local_y().truncate()).abs();
+
+
+                if target_angle < PI * 0.25
+                {
+                    let laser_velocity = Velocity(transform.local_y().truncate() * 2000.0 + velocity.0 * 2.0);
+                    let mut laser_transform = (*transform).clone();
+                    laser_transform.translation += laser_transform.local_y() * 20.0 + Vec3::new(velocity.0.x, velocity.0.y, 0.0) * time.delta_seconds();
+                    
+                    ev_laser.send(LaserFireEvent(laser_transform, laser_velocity, LaserType::EnemyLaser));
+                }
             }
         }
+    }
+
+}
+
+fn enemy_collision_avoidance(
+    mut enemy_q: Query<(&Transform, &mut Velocity, &Enemy)>
+)
+{
+    let mut iter = enemy_q.iter_combinations_mut();
+    while let Some([(transform1, mut velocity1, _), (transform2, mut velocity2, _)]) = iter.fetch_next()
+    {
+        let delta = transform1.translation.truncate() - transform2.translation.truncate();
+        let dist = delta.length_squared();
+
+        let impulse = delta.normalize() * 1.0 / dist;
+
+        velocity1.0 -= impulse;
+        velocity2.0 += impulse;
     }
 }

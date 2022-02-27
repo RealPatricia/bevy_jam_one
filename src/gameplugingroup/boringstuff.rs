@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, sprite::collide_aabb::collide};
 use crate::gameplugingroup::gametypes::{characters::*, utilities::*, events::*};
 use std::{f32::consts::PI};
 
@@ -22,7 +22,10 @@ impl Plugin for BoringPlugin
             .add_system(movement)
             .add_system(aim)
             .add_system(drag)
-            .add_system(fire_laser);
+            .add_system(fire_laser)
+            .add_system(self_destruct)
+            .add_system(death)
+            .add_system(collision);
     }
 }
 
@@ -83,7 +86,7 @@ fn drag(
     {
         if *motile == MotileType::Ship
         {
-            let force = 0.0001 * (velocity.0 * 0.01).length().powf(2.3).abs();
+            let force = 0.0001 * (velocity.0 * 0.01).length().powf(2.8).abs();
             velocity.0 *= 1.0 - (force.clamp(0.0, 1.0))
         }
     }
@@ -117,6 +120,7 @@ fn fire_laser(
     {
         let laser_transform = laser.0;
         let laser_velocity = laser.1;
+        let laser_type = laser.2;
         let laser_sprite_bundle = SpriteBundle 
         {
             sprite: Sprite
@@ -128,6 +132,90 @@ fn fire_laser(
             ..Default::default()
         };
 
-        commands.spawn_bundle(laser_sprite_bundle).insert(laser_transform).insert(laser_velocity);
+        commands
+            .spawn_bundle(laser_sprite_bundle)
+            .insert(laser_transform)
+            .insert(laser_velocity)
+            .insert(SelfDestructTimer(Timer::from_seconds(3.0, false)))
+            .insert(Health::Finite(2))
+            .insert(laser_type);
+    }
+}
+
+fn self_destruct(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut sdq: Query<(Entity, &mut SelfDestructTimer)>
+)
+{
+    for (entity, mut sdt) in sdq.iter_mut()
+    {
+        if sdt.0.tick(time.delta()).just_finished()
+        {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn collision(
+    mut health_q: Query<(&mut Health, &Transform, &Sprite)>
+)
+{
+    let mut iter = health_q.iter_combinations_mut();
+    while let Some([(mut health1, transform1, sprite1), (mut health2, transform2, sprite2)]) =
+        iter.fetch_next()
+    {
+        let scale1 = Vec2::from(transform1.scale.truncate());
+        let scale2 = Vec2::from(transform2.scale.truncate());
+
+        let collision = collide(
+            transform1.translation, 
+            sprite1.custom_size.unwrap() * scale1 * 0.6, 
+            transform2.translation, 
+            sprite2.custom_size.unwrap() * scale2 * 0.6);
+
+        if let Some(_) = collision
+        {
+            match *health1
+            {
+                Health::Finite(x) =>
+                {
+                    *health1 = Health::Finite(x - 1);
+                }
+
+                _ => {}
+            }
+            match *health2
+            {
+                Health::Finite(x) =>
+                {
+                    *health2 = Health::Finite(x - 1);
+                }
+
+                _ => {}
+            }
+        }
+    }
+}
+
+fn death(
+    mut commands: Commands,
+    health_q: Query<(Entity, &Health)>
+)
+{
+    for (entity, health) in health_q.iter()
+    {
+        match health
+        {
+            Health::Finite(x) =>
+            {
+                if *x <= 0
+                {
+                    commands.entity(entity).despawn();
+                }
+            }
+
+            _ => {}
+        }
     }
 }

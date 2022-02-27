@@ -1,6 +1,8 @@
 
 pub mod characters
 {
+    use std::default;
+
     use bevy::prelude::*;
 
     #[derive(Component, PartialEq, Eq, Default, Clone)]
@@ -14,6 +16,14 @@ pub mod characters
     #[derive(Component, Default, Clone)]
     pub struct Laser;
     
+    #[derive(Component, Default, Clone, Copy)]
+    pub enum LaserType
+    {
+        #[default]
+        EnemyLaser,
+        PlayerLaser,
+    }
+
     #[derive(Component, Default, Clone)]
     pub struct Player;
 
@@ -32,7 +42,6 @@ pub mod characters
     #[derive(Component, Default, Clone)]
     pub struct Target(pub Option<Vec2>);
 
-    #[allow(dead_code)]
     #[derive(Component, Default, Clone)]
     pub enum Health
     {
@@ -40,6 +49,12 @@ pub mod characters
         Infinite,
         Finite(i32),
     }
+
+    #[derive(Component)]
+    pub struct SelfDestructTimer(pub Timer);
+    
+    #[derive(Component)]
+    pub struct FireTimer(pub Timer);
 }
 
 pub mod utilities
@@ -77,7 +92,7 @@ pub mod events
 {
     use bevy::prelude::Transform;
 
-    use super::characters::Velocity;
+    use super::characters::{Velocity, LaserType};
 
-    pub struct LaserFireEvent(pub Transform, pub Velocity);
+    pub struct LaserFireEvent(pub Transform, pub Velocity, pub LaserType);
 }
