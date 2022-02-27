@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::gameplugingroup::gametypes::{characters::*, utilities::*};
+use crate::gameplugingroup::gametypes::{characters::*, utilities::*, events::*};
 use std::{f32::consts::PI};
 
 pub struct BoringPlugin;
@@ -16,11 +16,13 @@ impl Plugin for BoringPlugin
                 height: 900.0,
                 ..Default::default()
             })
+            .add_event::<LaserFireEvent>()
             .add_startup_system(camera_setup)
             .add_system(camera_follow_player)
             .add_system(movement)
             .add_system(aim)
-            .add_system(drag);
+            .add_system(drag)
+            .add_system(fire_laser);
     }
 }
 
@@ -81,7 +83,7 @@ fn drag(
     {
         if *motile == MotileType::Ship
         {
-            let force = 0.0001 * (velocity.0 * 0.01).length().powf(2.0).abs();
+            let force = 0.0001 * (velocity.0 * 0.01).length().powf(2.3).abs();
             velocity.0 *= 1.0 - (force.clamp(0.0, 1.0))
         }
     }
@@ -103,5 +105,29 @@ fn aim(
                 transform.rotation *= Quat::from_rotation_z(-1.0 * angle * time.delta_seconds() * turnspeed.0 * PI / 180.0)
             }
         }
+    }
+}
+
+fn fire_laser(
+    mut commands: Commands,
+    mut ev_laser: EventReader<LaserFireEvent>
+)
+{
+    for laser in ev_laser.iter()
+    {
+        let laser_transform = laser.0;
+        let laser_velocity = laser.1;
+        let laser_sprite_bundle = SpriteBundle 
+        {
+            sprite: Sprite
+            {
+                color: Color::rgb(0.9, 0.9, 1.5),
+                custom_size: Some(Vec2::new(5.0, 50.0)),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        commands.spawn_bundle(laser_sprite_bundle).insert(laser_transform).insert(laser_velocity);
     }
 }

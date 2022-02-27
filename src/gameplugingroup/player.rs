@@ -1,6 +1,6 @@
 
 use bevy::{prelude::*, math::{Vec3Swizzles, Vec2}};
-use crate::gameplugingroup::gametypes::{characters::*, utilities::*, prefabs::*};
+use crate::gameplugingroup::gametypes::{characters::*, utilities::*, prefabs::*, events::*};
 
 pub struct PlayerPlugin;
 
@@ -11,7 +11,8 @@ impl Plugin for PlayerPlugin
         app
             .add_startup_system(player_setup)
             .add_system(player_velocity)
-            .add_system(player_target);
+            .add_system(player_target)
+            .add_system(player_fire);
     }
 }
 
@@ -70,7 +71,6 @@ fn player_velocity(
 
         velocity.0 += thrust_direction * thrust.0;
 
-        
     }
 }
 
@@ -100,7 +100,20 @@ fn player_target(
 
 #[allow(dead_code)]
 fn player_fire(
+    time: Res<Time>,
+    mut player_q: Query<(&Transform, &Velocity), With<Player>>,
+    keys: Res<Input<MouseButton>>,
+    mut ev_laser: EventWriter<LaserFireEvent>
 )
 {
-
-}
+    if keys.just_pressed(MouseButton::Left)
+    {
+        if let Ok((transform, velocity)) = player_q.get_single_mut()
+        {
+            let laser_velocity = Velocity(transform.local_y().truncate() * 2000.0 + velocity.0 * 2.0);
+            let mut laser_transform = (*transform).clone();
+            laser_transform.translation += laser_transform.local_y() * 20.0 + Vec3::new(velocity.0.x, velocity.0.y, 0.0) * time.delta_seconds();
+            ev_laser.send(LaserFireEvent(laser_transform, laser_velocity));
+        }
+    }
+} 

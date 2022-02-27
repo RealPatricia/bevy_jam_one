@@ -26,7 +26,7 @@ pub mod characters
     #[derive(Component, Default, Clone)]
     pub struct TurnSpeed(pub f32);
     
-    #[derive(Component, Default, Clone)]
+    #[derive(Component, Default, Clone, Copy)]
     pub struct Velocity(pub Vec2);
     
     #[derive(Component, Default, Clone)]
@@ -71,4 +71,13 @@ pub mod prefabs
         pub target: Target,
         pub health: Health        
     }
+}
+
+pub mod events
+{
+    use bevy::prelude::Transform;
+
+    use super::characters::Velocity;
+
+    pub struct LaserFireEvent(pub Transform, pub Velocity);
 }
