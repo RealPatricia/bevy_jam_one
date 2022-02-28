@@ -157,12 +157,16 @@ fn self_destruct(
     }
 }
 
+//gaze upon my works, ye mighty, and despair!
+
 fn collision(
-    mut health_q: Query<(&mut Health, &Transform, &Sprite)>
+    mut health_q: Query<(&mut Health, &Transform, &Sprite, Option<&Enemy>, Option<&Player>, Option<&LaserType>)>
 )
 {
     let mut iter = health_q.iter_combinations_mut();
-    while let Some([(mut health1, transform1, sprite1), (mut health2, transform2, sprite2)]) =
+    while let Some([
+        (mut health1, transform1, sprite1, enemy1, player1, laser1), 
+        (mut health2, transform2, sprite2, enemy2, player2, laser2)]) =
         iter.fetch_next()
     {
         let scale1 = Vec2::from(transform1.scale.truncate());
@@ -170,29 +174,280 @@ fn collision(
 
         let collision = collide(
             transform1.translation, 
-            sprite1.custom_size.unwrap() * scale1 * 0.6, 
+            sprite1.custom_size.unwrap() * scale1 * 0.3, 
             transform2.translation, 
-            sprite2.custom_size.unwrap() * scale2 * 0.6);
+            sprite2.custom_size.unwrap() * scale2 * 0.3);
 
         if let Some(_) = collision
         {
-            match *health1
+            if let Some(_e_one) = enemy1
             {
-                Health::Finite(x) =>
+                if let Some(_) = enemy2
                 {
-                    *health1 = Health::Finite(x - 1);
-                }
+                    match *health1
+                    {
+                        Health::Finite(x) =>
+                        {
+                            *health1 = Health::Finite(x - 1); 
+                        }
 
-                _ => {}
+                        _ => {}
+                    }
+                    match *health2
+                    {
+                        Health::Finite(x) =>
+                        {
+                            *health2 = Health::Finite(x - 1);
+                        }
+
+                        _ => {}
+                    }
+                }
+                else if let Some(_) = player2
+                {
+                    match *health1
+                    {
+                        Health::Finite(x) =>
+                        {
+                            *health1 = Health::Finite(x - 1);
+                        }
+    
+                        _ => {}
+                    }
+                    match *health2
+                    {
+                        Health::Finite(x) =>
+                        {
+                            *health2 = Health::Finite(x - 1);
+                        }
+    
+                        _ => {}
+                    } 
+                }
+                else if let Some(l_type_two) = laser2
+                {
+                    match l_type_two
+                    {
+                        LaserType::PlayerLaser =>
+                        {
+                            match *health1
+                            {
+                                Health::Finite(x) =>
+                                {
+                                    *health1 = Health::Finite(x - 1);
+                                }
+        
+                                _ => {}
+                            }
+                            match *health2
+                            {
+                                Health::Finite(x) =>
+                                {
+                                    *health2 = Health::Finite(x - 1);
+                                }
+        
+                                _ => {}
+                            }
+                        }
+    
+                        _ => {}
+                    }
+                }
+                else
+                {
+                    match *health1
+                    {
+                        Health::Finite(_) =>
+                        {
+                            *health1 = Health::Finite(0);
+                        }
+
+                        _ => {} 
+                    }
+                }
+            
+
             }
-            match *health2
+            else if let Some(_p_one) = player1
             {
-                Health::Finite(x) =>
+                if let Some(_) = enemy2
                 {
-                    *health2 = Health::Finite(x - 1);
-                }
+                    match *health1
+                    {
+                        Health::Finite(x) =>
+                        {
+                            *health1 = Health::Finite(x - 1);
+                        }
 
-                _ => {}
+                        _ => {}
+                    }
+                    match *health2
+                    {
+                        Health::Finite(x) =>
+                        {
+                            *health2 = Health::Finite(x - 1); 
+                        }
+
+                        _ => {}
+                    }
+                }
+                else if let Some(_) = player2
+                {
+
+                }
+                else if let Some(l_type_two) = laser2
+                {
+                    match l_type_two
+                    {
+                        LaserType::PlayerLaser =>
+                        {
+                            match *health1
+                            {
+                                Health::Finite(x) =>
+                                {
+                                    *health1 = Health::Finite(x - 1); 
+                                }
+        
+                                _ => {}
+                            }
+                            match *health2
+                            {
+                                Health::Finite(x) =>
+                                {
+                                    *health2 = Health::Finite(x - 1);
+                                }
+        
+                                _ => {}
+                            }
+                        }
+    
+                        _ => {}
+                    }
+                }
+                else
+                {
+                    match *health1
+                    {
+                        Health::Finite(_) =>
+                        {
+                            *health1 = Health::Finite(0);
+                        }
+
+                        _ => {}
+                    }
+                }
+            }
+            else if let Some(_l_type_one) = laser1
+            {
+                if let Some(_) = enemy2
+                {
+                    match *health1
+                    {
+                        Health::Finite(x) =>
+                        {
+                            *health1 = Health::Finite(x - 1);
+                        }
+
+                        _ => {}
+                    }
+                    match *health2
+                    {
+                        Health::Finite(x) =>
+                        {
+                            *health1 = Health::Finite(x - 1);
+                        }
+
+                        _ => {}
+                    }
+                }
+                else if let Some(_) = player2
+                {
+                    match *health1
+                    {
+                        Health::Finite(x) =>
+                        {
+                            *health1 = Health::Finite(x - 1);
+                        }
+    
+                        _ => {}
+                    }
+                    match *health2
+                    {
+                        Health::Finite(x) =>
+                        {
+                            *health1 = Health::Finite(x - 1);
+                        }
+    
+                        _ => {}
+                    } 
+                }
+                else if let Some(_) = laser2
+                {
+
+                }
+                else
+                {
+                    match *health1
+                    {
+                        Health::Finite(x) =>
+                        {
+                            *health1 = Health::Finite(x - 1);
+                        }
+
+                        _ => {}
+                    }
+                }
+            }
+            else
+            {
+                if let Some(_) = enemy2
+                {
+                    match *health2
+                    {
+                        Health::Finite(_) =>
+                        {
+                            *health2 = Health::Finite(0);
+                        }
+
+                        _ => {}
+                    }
+                }
+                else if let Some(_) = player2
+                {
+                    match *health1
+                    {
+                        Health::Finite(_) =>
+                        {
+                            *health1 = Health::Finite(0);
+                        }
+
+                        _ => {} 
+                    }
+                }
+                else if let Some(_) = laser2
+                {
+                    match *health2
+                    {
+                        Health::Finite(_) =>
+                        {
+                            *health2 = Health::Finite(0);
+                        }
+
+                        _ => {}
+                    }
+                }
+                else
+                {
+                    match *health1
+                    {
+                        Health::Finite(_) =>
+                        {
+                            *health1 = Health::Finite(0);
+                        }
+
+                        _ => {}
+                    }
+                }
             }
         }
     }

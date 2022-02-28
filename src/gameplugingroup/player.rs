@@ -1,5 +1,5 @@
 
-use bevy::{prelude::*, math::{Vec3Swizzles, Vec2}};
+use bevy::{prelude::*};
 use crate::gameplugingroup::gametypes::{characters::*, utilities::*, prefabs::*, events::*};
 
 pub struct PlayerPlugin;

@@ -163,9 +163,9 @@ fn enemy_collision_avoidance(
         let delta = transform1.translation.truncate() - transform2.translation.truncate();
         let dist = delta.length_squared();
 
-        let impulse = delta.normalize() * 1.0 / dist;
+        let impulse = 10000.0 * delta.normalize() * 1.0 / dist;
 
-        velocity1.0 -= impulse;
-        velocity2.0 += impulse;
+        velocity1.0 += impulse;
+        velocity2.0 -= impulse;
     }
 }

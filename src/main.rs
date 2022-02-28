@@ -1,3 +1,5 @@
+//good luck
+
 #![feature(derive_default_enum)]
 use bevy::{prelude::*};
 

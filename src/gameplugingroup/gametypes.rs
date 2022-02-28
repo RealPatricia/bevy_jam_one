@@ -1,8 +1,6 @@
 
 pub mod characters
 {
-    use std::default;
-
     use bevy::prelude::*;
 
     #[derive(Component, PartialEq, Eq, Default, Clone)]
