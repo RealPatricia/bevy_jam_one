@@ -4,10 +4,12 @@ mod gametypes;
 mod boringstuff;
 mod player;
 mod enemy;
+mod starfield;
 
 use boringstuff::*;
 use player::*;
 use enemy::*;
+use starfield::*;
 
 pub struct GamePlugins;
 
@@ -18,6 +20,7 @@ impl PluginGroup for GamePlugins
         group
             .add(BoringPlugin)
             .add(PlayerPlugin)
-            .add(EnemyPlugin);
+            .add(EnemyPlugin)
+            .add(StarFieldPlugin);
     }
 }

@@ -41,7 +41,7 @@ fn player_setup(
     let player_ship_prefab = ShipPrefab
     {
         sprite_bundle: player_sprite_bundle,
-        thrust: Thrust(30.0),
+        thrust: Thrust(15.0),
         turnspeed: TurnSpeed(600.0),
         motile: MotileType::Ship,
         health: Health::Infinite,

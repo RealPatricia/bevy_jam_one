@@ -64,6 +64,12 @@ pub mod utilities
 
     #[derive(Component)]
     pub struct UiCameraTag;
+
+    pub struct ArenaSize
+    {
+        pub width: f32,
+        pub height: f32
+    }    
 }
 
 pub mod prefabs
