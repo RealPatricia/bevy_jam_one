@@ -37,10 +37,13 @@ fn asteroid_field_setup(
                 dir = Vec3::from([rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), 0.0]);
             }
             dir = dir.normalize();
+            let scale_mag = rng.gen_range(0.8..1.2);
+            let scale = Vec3::from([scale_mag; 3]);
 
             let asteroid_transform = Transform
             {
                 translation: dir * dist,
+                scale: scale,
                 ..Default::default()
             };
             let asteroid_bundle = SpriteBundle
